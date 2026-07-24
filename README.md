@@ -2,6 +2,17 @@
 
 PagePulse is a production-oriented HTTP API that fetches a public webpage and returns a compact technical, SEO, and accessibility audit. It is deliberately dependency-light and includes bounded network work, SSRF protection, TTL/LRU caching, in-flight request coalescing, concurrency backpressure, per-client rate limiting, request correlation, and structured JSON logs.
 
+## Scale design deliverables
+
+The production scale design targets 10,000 audits per day, bursts of 500 concurrent submissions, and explicit customer-facing response-time objectives:
+
+- [Architecture, data flow, queueing, state, and diagram](docs/architecture.md)
+- [Technology decision record and rejected alternatives](docs/technology-decisions.md)
+- [Top failure modes and mitigations](docs/failure-modes.md)
+- [Observability, alerting, deployment, and rollback plan](docs/observability-rollback.md)
+
+No frontend is required: PagePulse is an API service, and the scale deliverables describe the production evolution of that service.
+
 ## API
 
 ### `POST /v1/audits`
