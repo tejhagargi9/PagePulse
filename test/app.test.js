@@ -25,6 +25,22 @@ test('validates JSON body and URL input', async t => {
   assert.ok(body.error.requestId);
 });
 
+test('rejects unexpected fields and oversized request bodies', async t => {
+  const running = await listen(createApp(baseConfig, { auditor: async url => auditResult(url) }));
+  t.after(running.close);
+  const unexpected = await fetch(`${running.url}/v1/audits`, {
+    method: 'POST', body: JSON.stringify({ url: 'https://example.com', extra: true })
+  });
+  assert.equal(unexpected.status, 400);
+  assert.equal((await unexpected.json()).error.code, 'INVALID_REQUEST');
+
+  const oversized = await fetch(`${running.url}/v1/audits`, {
+    method: 'POST', body: JSON.stringify({ url: `https://example.com/${'a'.repeat(17_000)}` })
+  });
+  assert.equal(oversized.status, 413);
+  assert.equal((await oversized.json()).error.code, 'REQUEST_TOO_LARGE');
+});
+
 test('caches repeat audits and coalesces simultaneous misses', async t => {
   let calls = 0;
   let resolveAudit;
@@ -65,4 +81,36 @@ test('preserves safe caller request IDs', async t => {
   const response = await fetch(`${running.url}/v1/audits`, { method: 'POST', headers: { 'x-request-id': 'trace-123' }, body: JSON.stringify({ url: 'https://example.com' }) });
   assert.equal(response.headers.get('x-request-id'), 'trace-123');
   assert.equal((await response.json()).meta.requestId, 'trace-123');
+});
+
+test('replaces unsafe request IDs and does not expose internal errors', async t => {
+  const logs = [];
+  const logger = { info() {}, error: (event, fields) => logs.push({ event, fields }) };
+  const running = await listen(createApp(baseConfig, {
+    logger,
+    auditor: async () => { throw new Error('database password'); }
+  }));
+  t.after(running.close);
+  const response = await fetch(`${running.url}/v1/audits`, {
+    method: 'POST', headers: { 'x-request-id': 'bad id!' }, body: JSON.stringify({ url: 'https://example.com' })
+  });
+  const body = await response.json();
+  assert.equal(response.status, 500);
+  assert.equal(body.error.code, 'INTERNAL_ERROR');
+  assert.equal(body.error.message, 'An unexpected error occurred');
+  assert.notEqual(body.error.requestId, 'bad id!');
+  assert.equal(logs[0].event, 'request_error');
+});
+
+test('uses the first forwarded address only when proxy trust is enabled', async t => {
+  const running = await listen(createApp({ ...baseConfig, trustProxy: true, rateLimitMax: 1 }, {
+    auditor: async url => auditResult(url)
+  }));
+  t.after(running.close);
+  const request = address => fetch(`${running.url}/v1/audits`, {
+    method: 'POST', headers: { 'x-forwarded-for': `${address}, 10.0.0.1` }, body: JSON.stringify({ url: 'https://example.com' })
+  });
+  assert.equal((await request('203.0.113.1')).status, 200);
+  assert.equal((await request('203.0.113.2')).status, 200);
+  assert.equal((await request('203.0.113.1')).status, 429);
 });

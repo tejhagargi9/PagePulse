@@ -24,6 +24,17 @@ test('auditor follows validated redirects and reads HTML', async () => {
   assert.deepEqual(calls, ['https://one.test/', 'https://two.test/page']);
 });
 
+test('auditor rejects malformed and excessive redirect chains', async () => {
+  const options = { timeoutMs: 100, maxResponseBytes: 1000, validatePublicUrl: publicUrl };
+  const missingLocation = createAuditor({ ...options, fetchImpl: async () => new Response(null, { status: 302 }) });
+  await assert.rejects(missingLocation('https://example.test'), { code: 'INVALID_REDIRECT' });
+
+  const endless = createAuditor({ ...options, fetchImpl: async () => new Response(null, {
+    status: 302, headers: { location: '/again' }
+  }) });
+  await assert.rejects(endless('https://example.test'), { code: 'TOO_MANY_REDIRECTS' });
+});
+
 test('auditor rejects upstream failures and non-HTML content', async () => {
   const options = { timeoutMs: 100, maxResponseBytes: 1000, validatePublicUrl: publicUrl };
   await assert.rejects(createAuditor({ ...options, fetchImpl: async () => new Response('no', { status: 500 }) })('https://example.test'), { code: 'UPSTREAM_HTTP_ERROR' });

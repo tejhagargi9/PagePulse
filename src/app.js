@@ -27,7 +27,10 @@ async function readJson(req) {
 
 export function createHandler(config, dependencies = {}) {
   const logger = dependencies.logger || createLogger(config.logLevel);
-  const auditor = dependencies.auditor || createAuditor(config);
+  const auditor = dependencies.auditor || createAuditor({
+    timeoutMs: config.auditTimeoutMs,
+    maxResponseBytes: config.maxResponseBytes
+  });
   const cache = dependencies.cache || new TtlLruCache({ ttlMs: config.cacheTtlMs, maxEntries: config.cacheMaxEntries });
   const concurrency = dependencies.concurrency || new ConcurrencyLimiter(config.maxConcurrency, config.maxQueueSize);
   const rates = dependencies.rateLimiter || new RateLimiter({ max: config.rateLimitMax, windowMs: config.rateLimitWindowMs });
