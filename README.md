@@ -105,7 +105,7 @@ Logs are newline-delimited JSON on stdout, with `request_complete`, `request_err
 
 ## CI and deployment
 
-GitHub Actions runs unit/integration tests, coverage, and a Docker build on every push and pull request. `render.yaml` provides a Render Blueprint: create a Blueprint from this repository and Render will deploy the Docker service and probe `/health`. The same image works on any container platform; set `TRUST_PROXY=true` only when the platform sanitizes forwarded headers.
+GitHub Actions runs unit/integration tests, coverage, and a Docker build on every push and pull request. `render.yaml` provides a Render Blueprint for a long-lived container, while `api/index.js` and `vercel.json` provide a Vercel serverless deployment. Serverless cache and quota state is scoped to each warm instance; use the container deployment plus Redis when globally shared state across replicas is required. Set `TRUST_PROXY=true` only when the platform sanitizes forwarded headers.
 
 ## License
 

@@ -25,7 +25,7 @@ async function readJson(req) {
   catch { throw new AppError(400, 'INVALID_JSON', 'Request body must be valid JSON'); }
 }
 
-export function createApp(config, dependencies = {}) {
+export function createHandler(config, dependencies = {}) {
   const logger = dependencies.logger || createLogger(config.logLevel);
   const auditor = dependencies.auditor || createAuditor(config);
   const cache = dependencies.cache || new TtlLruCache({ ttlMs: config.cacheTtlMs, maxEntries: config.cacheMaxEntries });
@@ -33,7 +33,7 @@ export function createApp(config, dependencies = {}) {
   const rates = dependencies.rateLimiter || new RateLimiter({ max: config.rateLimitMax, windowMs: config.rateLimitWindowMs });
   const inFlight = new Map();
 
-  return http.createServer(async (req, res) => {
+  return async (req, res) => {
     const started = Date.now();
     const suppliedId = req.headers['x-request-id'];
     const requestId = typeof suppliedId === 'string' && /^[a-zA-Z0-9._-]{1,128}$/.test(suppliedId) ? suppliedId : randomUUID();
@@ -83,5 +83,9 @@ export function createApp(config, dependencies = {}) {
     } finally {
       logger.info('request_complete', { requestId, method: req.method, path: req.url, status, durationMs: Date.now() - started });
     }
-  });
+  };
+}
+
+export function createApp(config, dependencies = {}) {
+  return http.createServer(createHandler(config, dependencies));
 }
