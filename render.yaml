@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: pagepulse-api
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CACHE_TTL_MS
+        value: 300000

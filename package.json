@@ -1,0 +1,15 @@
+{
+  "name": "pagepulse",
+  "version": "1.0.0",
+  "description": "Production-ready URL audit API",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test --test-reporter=spec",
+    "test:coverage": "node --test --experimental-test-coverage"
+  },
+  "engines": { "node": ">=20" },
+  "license": "MIT"
+}
